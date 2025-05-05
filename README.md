@@ -25,47 +25,55 @@ Este projeto simula um semáforo com dois modos de operação: **normal** e **no
 ├── ws2812.pio.h/.pio
 ```
 
-## ⚙️ Configuração do CMake
+## ⚙️ Configuração do CMake importantes para FreeRtos
 
 ```cmake
-cmake_minimum_required(VERSION 3.13)
-include(pico_sdk_import.cmake)
+#Trecho para configuração do FreeRTOS
 
-project(semaforo_rtos C CXX ASM)
-set(CMAKE_C_STANDARD 11)
-set(CMAKE_CXX_STANDARD 17)
+# Permitir que o usuário defina via variável de ambiente ou argumento -D
+if(DEFINED ENV{FREERTOS_KERNEL_PATH})
+    set(FREERTOS_KERNEL_PATH $ENV{FREERTOS_KERNEL_PATH})
+endif()
 
-pico_sdk_init()
+# Ou definir manualmente, se não definido
+#set(FREERTOS_KERNEL_PATH "${FREERTOS_KERNEL_PATH}" CACHE PATH "caminho para o kernel do freeRtos")
 
-add_executable(semaforo
-    main.c
-    lib/ssd1306.c
-    lib/matrizLeds.c
-    ${CMAKE_CURRENT_LIST_DIR}/lib/FreeRTOS/portable/MemMang/heap_4.c
-    ${CMAKE_CURRENT_LIST_DIR}/lib/FreeRTOS/tasks.c
-    ${CMAKE_CURRENT_LIST_DIR}/lib/FreeRTOS/queue.c
-    ${CMAKE_CURRENT_LIST_DIR}/lib/FreeRTOS/list.c
-    ${CMAKE_CURRENT_LIST_DIR}/lib/FreeRTOS/timers.c
-    ${CMAKE_CURRENT_LIST_DIR}/lib/FreeRTOS/event_groups.c
+# Verificar se o caminho é válido
+if(NOT EXISTS "${FREERTOS_KERNEL_PATH}/portable/ThirdParty/GCC/RP2040/FreeRTOS_Kernel_import.cmake")
+    message(FATAL_ERROR "FREERTOS_KERNEL_PATH inválido ou não definido.")
+endif()
+
+# Importar o FreeRTOS
+include(${FREERTOS_KERNEL_PATH}/portable/ThirdParty/GCC/RP2040/FreeRTOS_Kernel_import.cmake)
+
+target_link_libraries(${PROJECT_NAME} 
+    pico_stdlib 
+    hardware_gpio
+    hardware_i2c
+    hardware_pio
+    hardware_pwm
+    FreeRTOS-Kernel 
+    FreeRTOS-Kernel-Heap4
 )
-
-target_include_directories(semaforo PRIVATE
-    ${CMAKE_CURRENT_LIST_DIR}/lib
-    ${CMAKE_CURRENT_LIST_DIR}/lib/FreeRTOS/include
-    ${CMAKE_CURRENT_LIST_DIR}/lib/FreeRTOS/portable/GCC/RP2040
-)
-
-target_link_libraries(semaforo pico_stdlib hardware_pwm hardware_i2c hardware_pio pico_time pico_multicore)
-
-pico_enable_stdio_usb(semaforo 1)
-pico_enable_stdio_uart(semaforo 0)
-
-pico_add_extra_outputs(semaforo)
 ```
 
-## 📸 Demonstração
+## 📦 Configurando o caminho para o FreeRTOS
 
-(Adicione aqui imagens ou vídeos do projeto em funcionamento.)
+O projeto depende da variável `FREERTOS_KERNEL_PATH` apontando para o diretório onde o **FreeRTOS-Kernel** está salvo.
+
+Você pode configurar isso de duas formas:
+
+### Configurar variável de ambiente (recomendado)
+
+#### **No Windows:**
+
+1. Pressione `Win + S` e procure por “variáveis de ambiente”.
+2. Clique em **“Variáveis de ambiente...”**.
+3. Em **"Variáveis de usuário"**, clique em **"Nova..."**.
+4. Adicione:
+   - Nome: `FREERTOS_KERNEL_PATH`
+   - Valor: `C:\FreeRTOS-Kernel` *(ajuste conforme o local do seu kernel)*
+
 
 ## 📚 Requisitos
 
@@ -84,15 +92,3 @@ pico_add_extra_outputs(semaforo)
 - **PWM**: controle do buzzer.
 - **I2C**: comunicação com o display OLED.
 
-## ✅ Compilação e Upload
-
-Clone este repositório e use o `CMake` com `ninja` ou `make`:
-
-```bash
-mkdir build
-cd build
-cmake ..
-make
-```
-
-Use o [Picotool](https://github.com/raspberrypi/picotool) ou arraste o `.uf2` para a unidade montada do Pico.
